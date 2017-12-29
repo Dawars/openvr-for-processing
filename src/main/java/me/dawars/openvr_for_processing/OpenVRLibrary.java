@@ -172,7 +172,6 @@ public class OpenVRLibrary {
         }
     }
 
-    // FIXME per hand values
     private int[] lastControllerPacketNum = {-1, -1};
     private long[] lastButtonPressed = {0, 0};
     private long[] lastButtonTouched = {0, 0};
@@ -194,8 +193,8 @@ public class OpenVRLibrary {
             } else if (controllerRole == TrackedControllerRole_LeftHand) {
                 hand = ControllerUtils.Side.Left;
             } else {
-                System.err.println("No hand for controller");
                 // neither
+                System.err.println("No hand for controller");
             }
 
             // getting controller state for every button on deviceId
@@ -227,17 +226,17 @@ public class OpenVRLibrary {
                     // is pressed
                     if (IsButtonPressedOrTouched(state.ulButtonPressed, buttonId) != IsButtonPressedOrTouched(lastButtonPressed[hand], buttonId)) { // state changed
                         if (IsButtonPressedOrTouched(state.ulButtonPressed, buttonId)) {
-                            callButtonPressedEvent(deviceId, buttonId);
+                            callButtonPressedEvent(hand, buttonId);
                         } else {
-                            callButtonReleasedEvent(deviceId, buttonId);
+                            callButtonReleasedEvent(hand, buttonId);
                         }
                     }
                     // is touched
                     if (IsButtonPressedOrTouched(state.ulButtonTouched, buttonId) != IsButtonPressedOrTouched(lastButtonTouched[hand], buttonId)) { // state changed
                         if (IsButtonPressedOrTouched(state.ulButtonTouched, buttonId)) {
-                            callButtonTouchedEvent(deviceId, buttonId);
+                            callButtonTouchedEvent(hand, buttonId);
                         } else {
-                            callButtonUntouchedEvent(deviceId, buttonId);
+                            callButtonUntouchedEvent(hand, buttonId);
                         }
                     }
                 }
@@ -350,11 +349,10 @@ public class OpenVRLibrary {
         }
     }
 
-    // TODO add Left and Right enum for controllers
-    public void callButtonPressedEvent(int deviceId, int buttonId) {
+    public void callButtonPressedEvent(int hand, int buttonId) {
         if (controllerButtonPressMethod != null) {
             try {
-                controllerButtonPressMethod.invoke(parent, deviceId, buttonId);
+                controllerButtonPressMethod.invoke(parent, hand, buttonId);
             } catch (Exception e) {
                 System.err.println("Disabling buttonPressed() for " + name + " because of an error.");
                 e.printStackTrace();
@@ -363,10 +361,10 @@ public class OpenVRLibrary {
         }
     }
 
-    public void callButtonReleasedEvent(int deviceId, int buttonId) {
+    public void callButtonReleasedEvent(int hand, int buttonId) {
         if (controllerButtonUnpressMethod != null) {
             try {
-                controllerButtonUnpressMethod.invoke(parent, deviceId, buttonId);
+                controllerButtonUnpressMethod.invoke(parent, hand, buttonId);
             } catch (Exception e) {
                 System.err.println("Disabling buttonReleased() for " + name + " because of an error.");
                 e.printStackTrace();
@@ -375,10 +373,10 @@ public class OpenVRLibrary {
         }
     }
 
-    public void callButtonTouchedEvent(int deviceId, int buttonId) {
+    public void callButtonTouchedEvent(int hand, int buttonId) {
         if (controllerButtonTouchMethod != null) {
             try {
-                controllerButtonTouchMethod.invoke(parent, deviceId, buttonId);
+                controllerButtonTouchMethod.invoke(parent, hand, buttonId);
             } catch (Exception e) {
                 System.err.println("Disabling buttonTouchedEvent() for " + name + " because of an error.");
                 e.printStackTrace();
@@ -387,10 +385,10 @@ public class OpenVRLibrary {
         }
     }
 
-    public void callButtonUntouchedEvent(int deviceId, int buttonId) {
+    public void callButtonUntouchedEvent(int hand, int buttonId) {
         if (controllerButtonUntouchMethod != null) {
             try {
-                controllerButtonUntouchMethod.invoke(parent, deviceId, buttonId);
+                controllerButtonUntouchMethod.invoke(parent, hand, buttonId);
             } catch (Exception e) {
                 System.err.println("Disabling buttonUntouched() for " + name + " because of an error.");
                 e.printStackTrace();
