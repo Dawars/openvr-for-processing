@@ -4,10 +4,11 @@ import vr.VR;
 
 public class ControllerUtils {
 
-    public static class Side {
-        public static final int Left = 0;
-        public static final int Right = 1;
-        public static final int Max = 2;
+    public static class Hand {
+        public static final int INVALID = -1;
+        public static final int LEFT = 0;
+        public static final int RIGHT = 1;
+        public static final int MAX = 2;
     }
 
     public static boolean IsButtonPressedOrTouched(long ulButtonState, int buttonId) {

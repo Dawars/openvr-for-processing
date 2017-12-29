@@ -12,14 +12,13 @@ import java.lang.reflect.*;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
+import static me.dawars.openvr_for_processing.utils.ControllerUtils.*;
 import static me.dawars.openvr_for_processing.utils.ControllerUtils.IsButtonPressedOrTouched;
 import static vr.VR.ETrackedControllerRole.TrackedControllerRole_LeftHand;
 import static vr.VR.ETrackedControllerRole.TrackedControllerRole_RightHand;
 import static vr.VR.ETrackedDeviceClass.TrackedDeviceClass_Controller;
-import static vr.VR.ETrackedDeviceProperty.Prop_Axis0Type_Int32;
 import static vr.VR.ETrackedDeviceProperty.Prop_ControllerRoleHint_Int32;
 import static vr.VR.EVRButtonId.k_EButton_Max;
-import static vr.VR.EVRControllerAxisType.*;
 import static vr.VR.EVREventType.*;
 import static vr.VR.*;
 
@@ -150,7 +149,7 @@ public class OpenVRLibrary {
 
     /* Controller */
 
-    int[] controllerIds = new int[ControllerUtils.Side.Max];
+    int[] controllerIds = new int[Hand.MAX];
 
     private void updateControllerRole() {
 
@@ -163,16 +162,16 @@ public class OpenVRLibrary {
             int controllerRole = hmd.GetInt32TrackedDeviceProperty.apply(deviceId, Prop_ControllerRoleHint_Int32, errorBuffer);
 
             if (controllerRole == TrackedControllerRole_RightHand) {
-                controllerIds[ControllerUtils.Side.Right] = deviceId;
+                controllerIds[Hand.RIGHT] = deviceId;
             } else if (controllerRole == TrackedControllerRole_LeftHand) {
-                controllerIds[ControllerUtils.Side.Left] = deviceId;
+                controllerIds[Hand.LEFT] = deviceId;
             } else {
                 // neither
             }
         }
     }
 
-    private int[] lastControllerPacketNum = {-1, -1};
+    private int[] lastControllerPacketNum = {Hand.INVALID, Hand.INVALID};
     private long[] lastButtonPressed = {0, 0};
     private long[] lastButtonTouched = {0, 0};
 
@@ -185,13 +184,13 @@ public class OpenVRLibrary {
                 continue;
 
             // get hand
-            int hand = -1;
+            int hand = Hand.INVALID;
             int controllerRole = hmd.GetInt32TrackedDeviceProperty.apply(deviceId, Prop_ControllerRoleHint_Int32, errorBuffer);
 
             if (controllerRole == TrackedControllerRole_RightHand) {
-                hand = ControllerUtils.Side.Right;
+                hand = Hand.RIGHT;
             } else if (controllerRole == TrackedControllerRole_LeftHand) {
-                hand = ControllerUtils.Side.Left;
+                hand = Hand.LEFT;
             } else {
                 // neither
                 System.err.println("No hand for controller");
