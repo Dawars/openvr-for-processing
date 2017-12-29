@@ -1,11 +1,11 @@
-package me.dawars.openvr_for_processing;
+package me.dawars.openvr_for_processing.utils;
 
 import processing.core.PMatrix3D;
 import processing.core.PVector;
 import vr.HmdMatrix34_t;
 import vr.HmdVector3_t;
 
-public class Utils {
+public class MathUtils {
     /**
      * Converts {@link HmdMatrix34_t} to {@link PMatrix3D}
      *

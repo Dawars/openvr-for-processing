@@ -2,6 +2,8 @@ package me.dawars.openvr_for_processing;
 
 
 import com.jogamp.opengl.util.GLBuffers;
+import me.dawars.openvr_for_processing.utils.ControllerUtils;
+import me.dawars.openvr_for_processing.utils.MathUtils;
 import processing.core.PApplet;
 import processing.core.PVector;
 import vr.*;
@@ -9,13 +11,17 @@ import vr.*;
 import java.lang.reflect.*;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
-import static vr.VR.EVRButtonId.k_EButton_Grip;
+import static me.dawars.openvr_for_processing.utils.ControllerUtils.IsButtonPressedOrTouched;
+import static vr.VR.ETrackedControllerRole.TrackedControllerRole_LeftHand;
+import static vr.VR.ETrackedControllerRole.TrackedControllerRole_RightHand;
+import static vr.VR.ETrackedDeviceClass.TrackedDeviceClass_Controller;
+import static vr.VR.ETrackedDeviceProperty.Prop_Axis0Type_Int32;
+import static vr.VR.ETrackedDeviceProperty.Prop_ControllerRoleHint_Int32;
+import static vr.VR.EVRButtonId.k_EButton_Max;
+import static vr.VR.EVRControllerAxisType.*;
 import static vr.VR.EVREventType.*;
-import static vr.VR.EVREventType.VREvent_ChaperoneSettingsHaveChanged;
-import static vr.VR.EVREventType.VREvent_ChaperoneTempDataHasChanged;
-import static vr.VR.k_unMaxTrackedDeviceCount;
+import static vr.VR.*;
 
 public class OpenVRLibrary {
     private String name = "OpenVR for Processing";
@@ -72,7 +78,13 @@ public class OpenVRLibrary {
 
 
             isReady = true;
+            postInit();
         }
+    }
+
+    private void postInit() {
+        updateChaperoneData();
+        updateControllerRole();
     }
 
     public void draw() {
@@ -88,6 +100,8 @@ public class OpenVRLibrary {
                 continue;
             }
 
+//            System.out.println(Utils.GetVREventName(event.eventType));
+
             switch (event.eventType) {
                 //Handle quiting the app from Steam
                 case VREvent_DriverRequestedQuit:
@@ -102,32 +116,162 @@ public class OpenVRLibrary {
                     updateChaperoneData();
                     break;
 
+                // Device connected
+//                case VREvent_TrackedDeviceActivated:
+//                case VREvent_TrackedDeviceDeactivated:
+                case VREvent_TrackedDeviceRoleChanged:
+//                case VREvent_TrackedDeviceUpdated:
+//                case VREvent_TrackedDeviceUserInteractionEnded:
+//                case VREvent_TrackedDeviceUserInteractionStarted:
+
+                    updateControllerRole();
+                    break;
+
                 // Controller
+                /*
+                // Can't use because buttonId is always 0
                 case VREvent_ButtonPress:
-                    callButtonPressedEvent(event.trackedDeviceIndex, event.data.controller);
+                    callButtonPressedEvent(event.trackedDeviceIndex, event.data.controller.button);
                     break;
                 case VREvent_ButtonUnpress:
-                    callButtonReleasedEvent(event.trackedDeviceIndex, event.data.controller);
+                    callButtonReleasedEvent(event.trackedDeviceIndex, event.data.controller.button);
                     break;
                 case VREvent_ButtonTouch:
-                    callButtonTouchedEvent(event.trackedDeviceIndex, event.data.controller);
+                    callButtonTouchedEvent(event.trackedDeviceIndex, event.data.controller.button);
                     break;
                 case VREvent_ButtonUntouch:
-                    callButtonUntouchedEvent(event.trackedDeviceIndex, event.data.controller);
-                    break;
+                    callButtonUntouchedEvent(event.trackedDeviceIndex, event.data.controller.button);
+                    break;*/
             }
         }
 
-        /*
-        // Process SteamVR controller state
-        for (int unDevice = 0; unDevice < k_unMaxTrackedDeviceCount; unDevice++) {
-            VRControllerState_t state = new VRControllerState_t();
-            if (hmd.GetControllerState.apply(unDevice, state, state.size())) {
-                callControllerEvent(state);
+        processControllerEvents();
+    }
 
-//                m_rbShowTrackedDevice[unDevice] = state.ulButtonPressed == 0;
+    /* Controller */
+
+    int[] controllerIds = new int[ControllerUtils.Side.Max];
+
+    private void updateControllerRole() {
+
+        // Process SteamVR controller state
+        for (int deviceId = 0; deviceId < k_unMaxTrackedDeviceCount; deviceId++) {
+            // if not controller, skip
+            if (hmd.GetTrackedDeviceClass.apply(deviceId) != TrackedDeviceClass_Controller)
+                continue;
+
+            int controllerRole = hmd.GetInt32TrackedDeviceProperty.apply(deviceId, Prop_ControllerRoleHint_Int32, errorBuffer);
+
+            if (controllerRole == TrackedControllerRole_RightHand) {
+                controllerIds[ControllerUtils.Side.Right] = deviceId;
+            } else if (controllerRole == TrackedControllerRole_LeftHand) {
+                controllerIds[ControllerUtils.Side.Left] = deviceId;
+            } else {
+                // neither
             }
-        }*/
+        }
+    }
+
+    // FIXME per hand values
+    private int[] lastControllerPacketNum = {-1, -1};
+    private long[] lastButtonPressed = {0, 0};
+    private long[] lastButtonTouched = {0, 0};
+
+    private void processControllerEvents() {
+
+        // Process SteamVR controller state
+        for (int deviceId = 0; deviceId < k_unMaxTrackedDeviceCount; deviceId++) {
+            // if not controller, skip
+            if (hmd.GetTrackedDeviceClass.apply(deviceId) != TrackedDeviceClass_Controller)
+                continue;
+
+            // get hand
+            int hand = -1;
+            int controllerRole = hmd.GetInt32TrackedDeviceProperty.apply(deviceId, Prop_ControllerRoleHint_Int32, errorBuffer);
+
+            if (controllerRole == TrackedControllerRole_RightHand) {
+                hand = ControllerUtils.Side.Right;
+            } else if (controllerRole == TrackedControllerRole_LeftHand) {
+                hand = ControllerUtils.Side.Left;
+            } else {
+                System.err.println("No hand for controller");
+                // neither
+            }
+
+            // getting controller state for every button on deviceId
+            VRControllerState_t state = new VRControllerState_t();
+            if (hmd.GetControllerState.apply(deviceId, state, state.size()) && state.unPacketNum != lastControllerPacketNum[hand]) {
+                // checking every analog button
+                /*for (int buttonId = 0; buttonId < k_unControllerStateAxisCount; buttonId++) {
+                    int type = hmd.GetInt32TrackedDeviceProperty.apply(deviceId, Prop_Axis0Type_Int32 + buttonId, errorBuffer);
+//                    System.out.println("Axis " + buttonId + " type: " + hmd.GetControllerAxisTypeNameFromEnum.apply(type));
+
+
+                    switch (type) {
+                        case k_eControllerAxis_None: // no analog values
+                            break;
+                        case k_eControllerAxis_TrackPad:
+                            System.out.println("Trackpad: " + state.rAxis[buttonId].x + " " + state.rAxis[buttonId].y);
+                            break;
+                        case k_eControllerAxis_Joystick:
+                            System.out.println("Joystick: " + state.rAxis[buttonId].x + " " + state.rAxis[buttonId].y);
+                            break;
+                        case k_eControllerAxis_Trigger:
+                            System.out.println("Trigger: " + state.rAxis[buttonId].x);
+                            break;
+                    }
+                }*/
+
+                // checking every digital button
+                for (int buttonId = 0; buttonId < k_EButton_Max; buttonId++) {
+                    // is pressed
+                    if (IsButtonPressedOrTouched(state.ulButtonPressed, buttonId) != IsButtonPressedOrTouched(lastButtonPressed[hand], buttonId)) { // state changed
+                        if (IsButtonPressedOrTouched(state.ulButtonPressed, buttonId)) {
+                            callButtonPressedEvent(deviceId, buttonId);
+                        } else {
+                            callButtonReleasedEvent(deviceId, buttonId);
+                        }
+                    }
+                    // is touched
+                    if (IsButtonPressedOrTouched(state.ulButtonTouched, buttonId) != IsButtonPressedOrTouched(lastButtonTouched[hand], buttonId)) { // state changed
+                        if (IsButtonPressedOrTouched(state.ulButtonTouched, buttonId)) {
+                            callButtonTouchedEvent(deviceId, buttonId);
+                        } else {
+                            callButtonUntouchedEvent(deviceId, buttonId);
+                        }
+                    }
+                }
+
+                lastButtonPressed[hand] = state.ulButtonPressed;
+                lastButtonTouched[hand] = state.ulButtonTouched;
+
+                lastControllerPacketNum[hand] = state.unPacketNum; // update packet num
+            }
+        }
+    }
+
+    // Helper functions, probably should move to separate class (how to access hmd, singleton?)
+
+    /**
+     * Helper function, tells if a button is pressed
+     *
+     * @param hand   which controller
+     * @param button which button on controller
+     * @return whether it is pressed
+     */
+    public boolean isButtonPressed(int hand, int button) {
+        return ControllerUtils.IsButtonPressedOrTouched(lastButtonPressed[hand], button);
+    }
+
+    /**
+     * Helper function, tells if a button is touched
+     *
+     * @param hand   which controller
+     * @param button which button on controller
+     * @return whether it is touched
+     */
+    public boolean isButtonTouched(int hand, int button) {
+        return ControllerUtils.IsButtonPressedOrTouched(lastButtonTouched[hand], button);
     }
 
     /**
@@ -147,10 +291,10 @@ public class OpenVRLibrary {
         HmdQuad_t rect = new HmdQuad_t();
         chaperone.GetPlayAreaRect.apply(rect);
         playAreaRect = new PVector[]{
-                Utils.GetVector(rect.vCorners[0]),
-                Utils.GetVector(rect.vCorners[1]),
-                Utils.GetVector(rect.vCorners[2]),
-                Utils.GetVector(rect.vCorners[3])
+                MathUtils.GetVector(rect.vCorners[0]),
+                MathUtils.GetVector(rect.vCorners[1]),
+                MathUtils.GetVector(rect.vCorners[2]),
+                MathUtils.GetVector(rect.vCorners[3])
         };
     }
 
@@ -180,22 +324,22 @@ public class OpenVRLibrary {
         // check to see if the host applet implements
         // public void controllerEvent(VREvent_Controller_t f)
         try {
-            controllerButtonPressMethod = parent.getClass().getMethod("buttonPressed", int.class, VREvent_Controller_t.class);
+            controllerButtonPressMethod = parent.getClass().getMethod("buttonPressed", int.class, int.class);
         } catch (Exception e) {
             // no such method, or an error.. which is fine, just ignore
         }
         try {
-            controllerButtonUnpressMethod = parent.getClass().getMethod("buttonReleased", int.class, VREvent_Controller_t.class);
+            controllerButtonUnpressMethod = parent.getClass().getMethod("buttonReleased", int.class, int.class);
         } catch (Exception e) {
             // no such method, or an error.. which is fine, just ignore
         }
         try {
-            controllerButtonTouchMethod = parent.getClass().getMethod("buttonTouched", int.class, VREvent_Controller_t.class);
+            controllerButtonTouchMethod = parent.getClass().getMethod("buttonTouched", int.class, int.class);
         } catch (Exception e) {
             // no such method, or an error.. which is fine, just ignore
         }
         try {
-            controllerButtonUntouchMethod = parent.getClass().getMethod("buttonUntouched", int.class, VREvent_Controller_t.class);
+            controllerButtonUntouchMethod = parent.getClass().getMethod("buttonUntouched", int.class, int.class);
         } catch (Exception e) {
             // no such method, or an error.. which is fine, just ignore
         }
@@ -206,10 +350,11 @@ public class OpenVRLibrary {
         }
     }
 
-    public void callButtonPressedEvent(int trackedDeviceIndex, VREvent_Controller_t event) {
+    // TODO add Left and Right enum for controllers
+    public void callButtonPressedEvent(int deviceId, int buttonId) {
         if (controllerButtonPressMethod != null) {
             try {
-                controllerButtonPressMethod.invoke(parent, trackedDeviceIndex, event);
+                controllerButtonPressMethod.invoke(parent, deviceId, buttonId);
             } catch (Exception e) {
                 System.err.println("Disabling buttonPressed() for " + name + " because of an error.");
                 e.printStackTrace();
@@ -218,10 +363,10 @@ public class OpenVRLibrary {
         }
     }
 
-    public void callButtonReleasedEvent(int trackedDeviceIndex, VREvent_Controller_t event) {
+    public void callButtonReleasedEvent(int deviceId, int buttonId) {
         if (controllerButtonUnpressMethod != null) {
             try {
-                controllerButtonUnpressMethod.invoke(parent, trackedDeviceIndex, event);
+                controllerButtonUnpressMethod.invoke(parent, deviceId, buttonId);
             } catch (Exception e) {
                 System.err.println("Disabling buttonReleased() for " + name + " because of an error.");
                 e.printStackTrace();
@@ -230,10 +375,10 @@ public class OpenVRLibrary {
         }
     }
 
-    public void callButtonTouchedEvent(int trackedDeviceIndex, VREvent_Controller_t event) {
+    public void callButtonTouchedEvent(int deviceId, int buttonId) {
         if (controllerButtonTouchMethod != null) {
             try {
-                controllerButtonTouchMethod.invoke(parent, trackedDeviceIndex, event);
+                controllerButtonTouchMethod.invoke(parent, deviceId, buttonId);
             } catch (Exception e) {
                 System.err.println("Disabling buttonTouchedEvent() for " + name + " because of an error.");
                 e.printStackTrace();
@@ -242,12 +387,12 @@ public class OpenVRLibrary {
         }
     }
 
-    public void callButtonUntouchedEvent(int trackedDeviceIndex, VREvent_Controller_t event) {
+    public void callButtonUntouchedEvent(int deviceId, int buttonId) {
         if (controllerButtonUntouchMethod != null) {
             try {
-                controllerButtonUntouchMethod.invoke(parent, trackedDeviceIndex, event);
+                controllerButtonUntouchMethod.invoke(parent, deviceId, buttonId);
             } catch (Exception e) {
-                System.err.println("Disabling buttonUntouhed() for " + name + " because of an error.");
+                System.err.println("Disabling buttonUntouched() for " + name + " because of an error.");
                 e.printStackTrace();
                 controllerButtonUntouchMethod = null;
             }
@@ -256,6 +401,7 @@ public class OpenVRLibrary {
 
     /**
      * Advanced method for handling VREvents
+     *
      * @param event VREvent
      * @return true if the event is consumed, default behaviour will be skipped
      */
