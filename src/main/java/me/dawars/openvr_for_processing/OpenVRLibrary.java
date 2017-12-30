@@ -1,23 +1,29 @@
 package me.dawars.openvr_for_processing;
 
 
+import com.jogamp.opengl.math.Matrix4;
 import com.jogamp.opengl.util.GLBuffers;
 import me.dawars.openvr_for_processing.utils.ControllerUtils;
 import me.dawars.openvr_for_processing.utils.MathUtils;
 import processing.core.PApplet;
+import processing.core.PImage;
+import processing.core.PMatrix3D;
 import processing.core.PVector;
+import processing.opengl.PGraphicsOpenGL;
 import vr.*;
 
 import java.lang.reflect.*;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
+import static java.lang.Math.PI;
 import static me.dawars.openvr_for_processing.utils.ControllerUtils.*;
 import static me.dawars.openvr_for_processing.utils.ControllerUtils.IsButtonPressedOrTouched;
 import static vr.VR.ETrackedControllerRole.TrackedControllerRole_LeftHand;
 import static vr.VR.ETrackedControllerRole.TrackedControllerRole_RightHand;
 import static vr.VR.ETrackedDeviceClass.TrackedDeviceClass_Controller;
-import static vr.VR.ETrackedDeviceProperty.Prop_ControllerRoleHint_Int32;
+import static vr.VR.ETrackedDeviceProperty.*;
+import static vr.VR.ETrackingUniverseOrigin.TrackingUniverseStanding;
 import static vr.VR.EVRButtonId.k_EButton_Max;
 import static vr.VR.EVREventType.*;
 import static vr.VR.*;
@@ -41,10 +47,9 @@ public class OpenVRLibrary {
 
     public OpenVRLibrary(PApplet parent) {
         this.parent = parent;
-        parent.registerMethod("dispose", this);
         parent.registerMethod("pre", this);
-        parent.registerMethod("draw", this);
         parent.registerMethod("post", this);
+        parent.registerMethod("dispose", this);
 
         registerEvents();
     }
@@ -79,15 +84,50 @@ public class OpenVRLibrary {
             isReady = true;
             postInit();
         }
+
+
+        /* vr camera */
+        // TODO try regular projection or ortho camera matrix
+
+        float m_fNearClip = 0.1f;
+        float m_fFarClip = 30.0f;
+
+        // eye to head
+        PMatrix3D eyePos = MathUtils.GetPMatrix(hmd.GetEyeToHeadTransform.apply(0));
+        eyePos.invert();
+
+        // projection matrix
+        PMatrix3D proj = MathUtils.GetPMatrix(hmd.GetProjectionMatrix.apply(0, m_fNearClip, m_fFarClip));
+
+        PMatrix3D pose = GetDeviceToAbsoluteTrackingPose(k_unTrackedDeviceIndex_Hmd);
+
+        // matMVP = m_mat4ProjectionLeft * m_mat4eyePosLeft * m_mat4HMDPose;
+        PMatrix3D matMVP = new PMatrix3D();
+
+        matMVP.set(eyePos);
+        matMVP.apply(pose);
+
+        //set projection
+        PGraphicsOpenGL pg = (PGraphicsOpenGL)parent.g;
+        pg.setProjection(proj);
+        pg.modelview.set(matMVP);
+        pg.modelviewInv.set(matMVP);
+        pg.modelviewInv.invert();
+        pg.updateProjmodelview();
     }
 
-    private void postInit() {
+    private void postInit() { // TODO add event
         updateChaperoneData();
         updateControllerRole();
-    }
 
-    public void draw() {
-        parent.text(VR.VR_RuntimePath(), 10, 20);
+
+        // TODO remove
+        IntBuffer width = GLBuffers.newDirectIntBuffer(1), height = GLBuffers.newDirectIntBuffer(1);
+        hmd.GetRecommendedRenderTargetSize.apply(width, height);
+
+        int w = width.get(0);
+        int h = height.get(0);
+        parent.getSurface().setSize(w, h);
     }
 
     public void post() {
@@ -147,9 +187,10 @@ public class OpenVRLibrary {
         processControllerEvents();
     }
 
-    /* Controller */
-
-    int[] controllerIds = new int[Hand.MAX];
+    /*
+     * Controller
+     */
+    private int[] controllerIds = new int[Hand.MAX];
 
     private void updateControllerRole() {
 
@@ -184,7 +225,7 @@ public class OpenVRLibrary {
                 continue;
 
             // get hand
-            int hand = Hand.INVALID;
+            int hand = Hand.INVALID; // todo: make lookup function
             int controllerRole = hmd.GetInt32TrackedDeviceProperty.apply(deviceId, Prop_ControllerRoleHint_Int32, errorBuffer);
 
             if (controllerRole == TrackedControllerRole_RightHand) {
@@ -223,7 +264,8 @@ public class OpenVRLibrary {
                 // checking every digital button
                 for (int buttonId = 0; buttonId < k_EButton_Max; buttonId++) {
                     // is pressed
-                    if (IsButtonPressedOrTouched(state.ulButtonPressed, buttonId) != IsButtonPressedOrTouched(lastButtonPressed[hand], buttonId)) { // state changed
+                    if (IsButtonPressedOrTouched(state.ulButtonPressed, buttonId) != IsButtonPressedOrTouched(lastButtonPressed[hand],
+                            buttonId)) { // state changed
                         if (IsButtonPressedOrTouched(state.ulButtonPressed, buttonId)) {
                             callButtonPressedEvent(hand, buttonId);
                         } else {
@@ -231,7 +273,8 @@ public class OpenVRLibrary {
                         }
                     }
                     // is touched
-                    if (IsButtonPressedOrTouched(state.ulButtonTouched, buttonId) != IsButtonPressedOrTouched(lastButtonTouched[hand], buttonId)) { // state changed
+                    if (IsButtonPressedOrTouched(state.ulButtonTouched, buttonId) != IsButtonPressedOrTouched(lastButtonTouched[hand],
+                            buttonId)) { // state changed
                         if (IsButtonPressedOrTouched(state.ulButtonTouched, buttonId)) {
                             callButtonTouchedEvent(hand, buttonId);
                         } else {
@@ -272,7 +315,7 @@ public class OpenVRLibrary {
         return ControllerUtils.IsButtonPressedOrTouched(lastButtonTouched[hand], button);
     }
 
-    /**
+    /*
      * Chaperone
      */
     private PVector playArea = new PVector();
@@ -289,10 +332,10 @@ public class OpenVRLibrary {
         HmdQuad_t rect = new HmdQuad_t();
         chaperone.GetPlayAreaRect.apply(rect);
         playAreaRect = new PVector[]{
-                MathUtils.GetVector(rect.vCorners[0]),
-                MathUtils.GetVector(rect.vCorners[1]),
-                MathUtils.GetVector(rect.vCorners[2]),
-                MathUtils.GetVector(rect.vCorners[3])
+                MathUtils.GetPVector(rect.vCorners[0]),
+                MathUtils.GetPVector(rect.vCorners[1]),
+                MathUtils.GetPVector(rect.vCorners[2]),
+                MathUtils.GetPVector(rect.vCorners[3])
         };
     }
 
@@ -314,7 +357,60 @@ public class OpenVRLibrary {
         return playAreaRect;
     }
 
+    /*
+     * Tracking
+     */
+
     /**
+     * Returns absolute pose as a {@link PMatrix3D}
+     * May only work for HMD
+     *
+     * @param deviceId to get the pose for
+     * @return absolute pose
+     */
+    public PMatrix3D GetDeviceToAbsoluteTrackingPose(int deviceId) {
+        TrackedDevicePose_t[] trackedDevicePose = new TrackedDevicePose_t[k_unMaxTrackedDeviceCount];
+        hmd.GetDeviceToAbsoluteTrackingPose.apply(TrackingUniverseStanding, 0, trackedDevicePose, k_unMaxTrackedDeviceCount);
+
+        return MathUtils.GetPMatrix(trackedDevicePose[deviceId].mDeviceToAbsoluteTracking);
+    }
+
+    /*
+     * Drawing
+     */
+
+    private boolean iconsLoaded = false;
+    private PImage[] icons;
+
+    /**
+     * Gives the ready icon for the selected device
+     *
+     * @param deviceId to get icon for
+     * @return device icon
+     */
+    public PImage getDeviceIcon(int deviceId) {
+        if (!iconsLoaded) {
+            // lazy loading icons
+
+            icons = new PImage[k_unMaxTrackedDeviceCount];
+
+            for (int trackedDevice = 0; trackedDevice < icons.length; trackedDevice++) {
+                //If the device is not connected, pass.
+                if (!hmd.IsTrackedDeviceConnected.apply(trackedDevice))
+                    continue;
+                String ready = hmd.GetTrackedDevicePropertyString(trackedDevice, Prop_NamedIconPathDeviceReady_String, errorBuffer);
+
+                String driverPath = VR.VR_RuntimePath() + "drivers/" + hmd.GetTrackedDevicePropertyString(trackedDevice, Prop_ResourceRoot_String, errorBuffer);
+                icons[trackedDevice] = parent.loadImage(driverPath + "/resources" + ready.replaceAll("\\{\\w*}", ""));
+
+            }
+            iconsLoaded = true;
+        }
+
+        return icons[deviceId];
+    }
+
+    /*
      * Events
      */
 
