@@ -36,22 +36,34 @@ public class OpenVRLibrary {
     public static final String OVR = "me.dawars.openvr_for_processing.OpenVRLibrary";
 
     private PApplet parent;
+    private PGraphicsOpenGL pg;
 
     private Method controllerButtonPressMethod;
     private Method controllerButtonUnpressMethod;
     private Method controllerButtonTouchMethod;
     private Method controllerButtonUntouchMethod;
     private Method vrEventMethod;
+    private Method postInitMethod;
 
     private boolean isReady = false; // if initializing openvr is finished
 
     public OpenVRLibrary(PApplet parent) {
         this.parent = parent;
+
+        if (!parent.sketchRenderer().equals(parent.P3D)) {
+            System.out.println("Renderer must be P3D, call size(1280, 720, P3D); in setup");
+            return;
+        }
+
         parent.registerMethod("pre", this);
+        parent.registerMethod("draw", this);
         parent.registerMethod("post", this);
         parent.registerMethod("dispose", this);
 
         registerEvents();
+
+        pg = (PGraphicsOpenGL) parent.g;
+        parent.frameRate(90);
     }
 
     private IVRCompositor_FnTable compositor;
@@ -89,15 +101,10 @@ public class OpenVRLibrary {
         /* vr camera */
         // TODO try regular projection or ortho camera matrix
 
-        float m_fNearClip = 0.1f;
-        float m_fFarClip = 30.0f;
 
         // eye to head
         PMatrix3D eyePos = MathUtils.GetPMatrix(hmd.GetEyeToHeadTransform.apply(0));
         eyePos.invert();
-
-        // projection matrix
-        PMatrix3D proj = MathUtils.GetPMatrix(hmd.GetProjectionMatrix.apply(0, m_fNearClip, m_fFarClip));
 
         PMatrix3D pose = GetDeviceToAbsoluteTrackingPose(k_unTrackedDeviceIndex_Hmd);
 
@@ -108,18 +115,25 @@ public class OpenVRLibrary {
         matMVP.apply(pose);
 
         //set projection
-        PGraphicsOpenGL pg = (PGraphicsOpenGL)parent.g;
-        pg.setProjection(proj);
+
         pg.modelview.set(matMVP);
         pg.modelviewInv.set(matMVP);
         pg.modelviewInv.invert();
         pg.updateProjmodelview();
     }
 
-    private void postInit() { // TODO add event
+    private void postInit() {
         updateChaperoneData();
         updateControllerRole();
 
+        // set projection matrix for hmd
+        float m_fNearClip = 0.1f;
+        float m_fFarClip = 30.0f;
+
+        // projection matrix
+        PMatrix3D proj = MathUtils.GetPMatrix(hmd.GetProjectionMatrix.apply(0, m_fNearClip, m_fFarClip));
+
+        pg.setProjection(proj);
 
         // TODO remove
         IntBuffer width = GLBuffers.newDirectIntBuffer(1), height = GLBuffers.newDirectIntBuffer(1);
@@ -128,6 +142,13 @@ public class OpenVRLibrary {
         int w = width.get(0);
         int h = height.get(0);
         parent.getSurface().setSize(w, h);
+
+
+        callPostInit();
+    }
+
+    public void draw() {
+        parent.text(parent.frameRate, 10, 20);
     }
 
     public void post() {
@@ -442,6 +463,11 @@ public class OpenVRLibrary {
         } catch (Exception e) {
             // no such method, or an error.. which is fine, just ignore
         }
+        try {
+            postInitMethod = parent.getClass().getMethod("postInit");
+        } catch (Exception e) {
+            // no such method, or an error.. which is fine, just ignore
+        }
     }
 
     public void callButtonPressedEvent(int hand, int buttonId) {
@@ -509,6 +535,21 @@ public class OpenVRLibrary {
             }
         }
         return false;
+    }
+
+    /**
+     * Event called after OpenVR is initialized
+     */
+    private void callPostInit() {
+        if (vrEventMethod != null) {
+            try {
+                postInitMethod.invoke(parent);
+            } catch (Exception e) {
+                System.err.println("Disabling postInit() for " + name + " because of an error.");
+                e.printStackTrace();
+                vrEventMethod = null;
+            }
+        }
     }
 
     public void dispose() {
