@@ -2,11 +2,16 @@ package examples.HelloVR;
 
 import me.dawars.openvr_for_processing.OpenVRLibrary;
 import processing.core.PApplet;
+import processing.core.PConstants;
 import processing.core.PImage;
+import processing.core.PShape;
+import processing.opengl.PShader;
 
 public class HelloVR extends PApplet {
 
+    private PShape cube;
     private PImage texture;
+    private PShader texShader;
 
     private OpenVRLibrary openVR;
 
@@ -16,6 +21,7 @@ public class HelloVR extends PApplet {
     private int m_iSceneVolumeDepth = 20;
     private float m_fScaleSpacing = 4;
 
+
     @Override
     public void settings() {
         size(1280, 720, P3D);
@@ -23,13 +29,64 @@ public class HelloVR extends PApplet {
 
     @Override
     public void setup() {
+        frameRate(90);
         openVR = new OpenVRLibrary(this);
 
         // shaders, textures
 
         texture = loadImage("cube_texture.png");
+        texShader = loadShader("texfrag.glsl", "texvert.glsl");
 
+        // create cube
+
+        textureMode(NORMAL);
+        cube = createShape();
+        cube.beginShape(QUADS);
+        cube.noStroke();
+        cube.texture(texture);
+// Front Face
+        cube.vertex(-0.5f, -0.5f, 0.5f, 0.0f, 0.0f); // Bottom Left Of The Texture and Quad
+        cube.vertex(0.5f, -0.5f, 0.5f, 1f, 0.0f); // Bottom Right Of The Texture and Quad
+        cube.vertex(0.5f, 0.5f, 0.5f, 1f, 1f); // Top Right Of The Texture and Quad
+        cube.vertex(-0.5f, 0.5f, 0.5f, 0.0f, 1f); // Top Left Of The Texture and Quad
+
+        // Back Face
+        cube.vertex(-0.5f, -0.5f, -0.5f, 1f, 0.0f); // Bottom Right Of The Texture and Quad
+        cube.vertex(-0.5f, 0.5f, -0.5f, 1f, 1f); // Top Right Of The Texture and Quad
+        cube.vertex(0.5f, 0.5f, -0.5f, 0.0f, 1f); // Top Left Of The Texture and Quad
+        cube.vertex(0.5f, -0.5f, -0.5f, 0.0f, 0.0f); // Bottom Left Of The Texture and Quad
+
+        // Top Face
+        cube.vertex(-0.5f, 0.5f, -0.5f, 0.0f, 1f); // Top Left Of The Texture and Quad
+        cube.vertex(-0.5f, 0.5f, 0.5f, 0.0f, 0.0f); // Bottom Left Of The Texture and Quad
+        cube.vertex(0.5f, 0.5f, 0.5f, 1f, 0.0f); // Bottom Right Of The Texture and Quad
+        cube.vertex(0.5f, 0.5f, -0.5f, 1f, 1f); // Top Right Of The Texture and Quad
+
+        // Bottom Face
+        cube.vertex(-0.5f, -0.5f, -0.5f, 1f, 1f);    // Top Right Of The Texture and Quad
+        cube.vertex(0.5f, -0.5f, -0.5f, 0.0f, 1f);    // Top Left Of The Texture and Quad
+        cube.vertex(0.5f, -0.5f, 0.5f, 0.0f, 0.0f);    // Bottom Left Of The Texture and Quad
+        cube.vertex(-0.5f, -0.5f, 0.5f, 1f, 0.0f);    // Bottom Right Of The Texture and Quad
+
+        // Right face
+        cube.vertex(0.5f, -0.5f, -0.5f, 1f, 0.0f);    // Bottom Right Of The Texture and Quad
+        cube.vertex(0.5f, 0.5f, -0.5f, 1f, 1f);    // Top Right Of The Texture and Quad
+        cube.vertex(0.5f, 0.5f, 0.5f, 0.0f, 1f);    // Top Left Of The Texture and Quad
+        cube.vertex(0.5f, -0.5f, 0.5f, 0.0f, 0.0f);    // Bottom Left Of The Texture and Quad
+
+        // Left Face
+        cube.vertex(-0.5f, -0.5f, -0.5f, 0.0f, 0.0f);    // Bottom Left Of The Texture and Quad
+        cube.vertex(-0.5f, -0.5f, 0.5f, 1f, 0.0f);    // Bottom Right Of The Texture and Quad
+        cube.vertex(-0.5f, 0.5f, 0.5f, 1f, 1f);    // Top Right Of The Texture and Quad
+        cube.vertex(-0.5f, 0.5f, -0.5f, 0.0f, 1f);    // Top Left Of The Texture and Quad
+
+
+        cube.endShape();
+
+
+        noStroke();
         color(127f);
+        tint(127f);
         fill(127f);
     }
 
@@ -37,7 +94,14 @@ public class HelloVR extends PApplet {
     public void draw() {
         background(0);
 
-        sphere(0.01f);
+//        camera(0, 0, 60, 0, 0, 0, 0, 1, 0);
+        /*
+        fill(255, 0, 0);
+        sphere(0.5f);
+
+        fill(255f);
+*/
+        shader(texShader);
 
         scale(m_fScale, m_fScale, m_fScale);
 
@@ -50,7 +114,8 @@ public class HelloVR extends PApplet {
                 for (int x = 0; x < m_iSceneVolumeWidth; x++) {
                     pushMatrix();
                     translate(startX + x * m_fScaleSpacing, startY + y * m_fScaleSpacing, startZ + z * m_fScaleSpacing);
-                    box(1);
+                    cube.draw(g);
+//                    box(1);
                     popMatrix();
                 }
             }
