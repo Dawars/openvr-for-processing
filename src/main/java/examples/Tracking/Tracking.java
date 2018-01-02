@@ -44,7 +44,6 @@ public class Tracking extends PApplet {
         background(0xffffff);
 
         background(0);
-        text("FPS: " + frameRate, width - textWidth("FPS: 90 ") - 10, 20);
 
         PVector playArea = openVR.getPlayArea();
         text("PlayArea: " + playArea.x + " m x " + playArea.y + " m", 10, 20);

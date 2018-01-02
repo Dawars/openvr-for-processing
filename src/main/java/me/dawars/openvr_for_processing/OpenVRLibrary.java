@@ -1,7 +1,6 @@
 package me.dawars.openvr_for_processing;
 
 
-import com.jogamp.opengl.math.Matrix4;
 import com.jogamp.opengl.util.GLBuffers;
 import me.dawars.openvr_for_processing.utils.ControllerUtils;
 import me.dawars.openvr_for_processing.utils.MathUtils;
@@ -16,7 +15,6 @@ import java.lang.reflect.*;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
-import static java.lang.Math.PI;
 import static me.dawars.openvr_for_processing.utils.ControllerUtils.*;
 import static me.dawars.openvr_for_processing.utils.ControllerUtils.IsButtonPressedOrTouched;
 import static vr.VR.ETrackedControllerRole.TrackedControllerRole_LeftHand;
@@ -63,7 +61,6 @@ public class OpenVRLibrary {
         registerEvents();
 
         pg = (PGraphicsOpenGL) parent.g;
-        parent.frameRate(90);
     }
 
     private IVRCompositor_FnTable compositor;
@@ -99,28 +96,33 @@ public class OpenVRLibrary {
 
 
         /* vr camera */
-        // TODO try regular projection or ortho camera matrix
+        if (debugRenderer.equals(OVR)) {
+
+            // TODO try regular projection or ortho camera matrix
 
 
-        // eye to head
-        PMatrix3D eyePos = MathUtils.GetPMatrix(hmd.GetEyeToHeadTransform.apply(0));
-        eyePos.invert();
+            // eye to head
+            PMatrix3D eyePos = MathUtils.GetPMatrix(hmd.GetEyeToHeadTransform.apply(0));
+            eyePos.invert();
 
-        PMatrix3D pose = GetDeviceToAbsoluteTrackingPose(k_unTrackedDeviceIndex_Hmd);
+            PMatrix3D pose = GetDeviceToAbsoluteTrackingPose(k_unTrackedDeviceIndex_Hmd);
 
-        // matMVP = m_mat4ProjectionLeft * m_mat4eyePosLeft * m_mat4HMDPose;
-        PMatrix3D matMVP = new PMatrix3D();
+            // matMVP = m_mat4ProjectionLeft * m_mat4eyePosLeft * m_mat4HMDPose;
+            PMatrix3D matMVP = new PMatrix3D();
 
-        matMVP.set(eyePos);
-        matMVP.apply(pose);
+            matMVP.set(eyePos);
+            matMVP.apply(pose);
 
-        //set projection
+            //set projection
 
-        pg.modelview.set(matMVP);
-        pg.modelviewInv.set(matMVP);
-        pg.modelviewInv.invert();
-        pg.updateProjmodelview();
+            pg.modelview.set(matMVP);
+            pg.modelviewInv.set(matMVP);
+            pg.modelviewInv.invert();
+            pg.updateProjmodelview();
+        }
     }
+
+    String debugRenderer = PApplet.P3D;
 
     private void postInit() {
         updateChaperoneData();
@@ -130,10 +132,12 @@ public class OpenVRLibrary {
         float m_fNearClip = 0.1f;
         float m_fFarClip = 30.0f;
 
-        // projection matrix
-        PMatrix3D proj = MathUtils.GetPMatrix(hmd.GetProjectionMatrix.apply(0, m_fNearClip, m_fFarClip));
+        if (debugRenderer.equals(OVR)) {
+            // projection matrix
+            PMatrix3D proj = MathUtils.GetPMatrix(hmd.GetProjectionMatrix.apply(0, m_fNearClip, m_fFarClip));
 
-        pg.setProjection(proj);
+            pg.setProjection(proj);
+        }
 
         // TODO remove
         IntBuffer width = GLBuffers.newDirectIntBuffer(1), height = GLBuffers.newDirectIntBuffer(1);
@@ -141,14 +145,15 @@ public class OpenVRLibrary {
 
         int w = width.get(0);
         int h = height.get(0);
-        parent.getSurface().setSize(w, h);
+//        parent.getSurface().setSize(w, h);
 
 
         callPostInit();
     }
 
     public void draw() {
-        parent.text(parent.frameRate, 10, 20);
+        parent.text("FPS: " + parent.frameRate, parent.width - parent.textWidth("FPS: 90.00 ") - 10, 20);
+
     }
 
     public void post() {
@@ -177,12 +182,12 @@ public class OpenVRLibrary {
                     break;
 
                 // Device connected
-//                case VREvent_TrackedDeviceActivated:
-//                case VREvent_TrackedDeviceDeactivated:
+                case VREvent_TrackedDeviceActivated:
+                case VREvent_TrackedDeviceDeactivated:
                 case VREvent_TrackedDeviceRoleChanged:
-//                case VREvent_TrackedDeviceUpdated:
-//                case VREvent_TrackedDeviceUserInteractionEnded:
-//                case VREvent_TrackedDeviceUserInteractionStarted:
+                case VREvent_TrackedDeviceUpdated:
+                case VREvent_TrackedDeviceUserInteractionEnded:
+                case VREvent_TrackedDeviceUserInteractionStarted:
 
                     updateControllerRole();
                     break;
@@ -210,10 +215,12 @@ public class OpenVRLibrary {
 
     /*
      * Controller
+     * TODO use these values
      */
     private int[] controllerIds = new int[Hand.MAX];
 
     private void updateControllerRole() {
+        int nextHandId = 0;
 
         // Process SteamVR controller state
         for (int deviceId = 0; deviceId < k_unMaxTrackedDeviceCount; deviceId++) {
@@ -228,7 +235,7 @@ public class OpenVRLibrary {
             } else if (controllerRole == TrackedControllerRole_LeftHand) {
                 controllerIds[Hand.LEFT] = deviceId;
             } else {
-                // neither
+                controllerIds[nextHandId++] = deviceId;
             }
         }
     }
@@ -254,8 +261,9 @@ public class OpenVRLibrary {
             } else if (controllerRole == TrackedControllerRole_LeftHand) {
                 hand = Hand.LEFT;
             } else {
-                // neither
-                System.err.println("No hand for controller");
+                // neither, index manually
+                // TODO assign hand in connection order for vive
+                hand = 0;
             }
 
             // getting controller state for every button on deviceId
