@@ -3,6 +3,12 @@ OpenVR Library for Processing, heavily under development, things ***will*** brea
 
 ## Examples
 
+### Tracking
+
+<img src="img/map_vive.png?raw=true"/>
+
+Tracking Vive devices
+
 <img src="img/controller_example.png?raw=true"/>
 
 White: released
