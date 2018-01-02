@@ -399,8 +399,9 @@ public class OpenVRLibrary {
      * @return absolute pose
      */
     public PMatrix3D GetDeviceToAbsoluteTrackingPose(int deviceId) {
-        TrackedDevicePose_t[] trackedDevicePose = new TrackedDevicePose_t[k_unMaxTrackedDeviceCount];
-        hmd.GetDeviceToAbsoluteTrackingPose.apply(TrackingUniverseStanding, 0, trackedDevicePose, k_unMaxTrackedDeviceCount);
+        TrackedDevicePose_t[] trackedDevicePose = new TrackedDevicePose_t[deviceId+1];
+        // TODO: store a local copy per draw() call
+        hmd.GetDeviceToAbsoluteTrackingPose.apply(TrackingUniverseStanding, 0, trackedDevicePose, deviceId);
 
         return MathUtils.GetPMatrix(trackedDevicePose[deviceId].mDeviceToAbsoluteTracking);
     }
