@@ -7,7 +7,22 @@ OpenVR Library for Processing, heavily under development, things ***will*** brea
 
 <img src="img/map_vive.png?raw=true"/>
 
-Tracking Vive devices
+Tracking HTC Vive devices
+
+<img src="img/map_rift.png?raw=true"/>
+
+Tracking Oculus Rift devices
+
+Call this method to get the pose matrix:
+```
+PMatrix3D GetDeviceToAbsoluteTrackingPose(int deviceId);
+```
+Use the utility function MathUtils.GetPosition to get the position from the matrix:
+```
+PVector GetPosition(PMatrix3D mat);
+```
+
+### Controller button events
 
 <img src="img/controller_example.png?raw=true"/>
 
@@ -17,7 +32,6 @@ Gray: touched
 
 Black: pressed
 
-### Controller button events
 
 **Hand:** either Hand.LEFT or Hand.RIGHT (or Hand.INVALID).
 
