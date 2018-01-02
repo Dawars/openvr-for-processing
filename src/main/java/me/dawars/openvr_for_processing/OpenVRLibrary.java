@@ -4,6 +4,7 @@ package me.dawars.openvr_for_processing;
 import com.jogamp.opengl.util.GLBuffers;
 import me.dawars.openvr_for_processing.utils.ControllerUtils;
 import me.dawars.openvr_for_processing.utils.MathUtils;
+import me.dawars.openvr_for_processing.utils.Utils;
 import processing.core.PApplet;
 import processing.core.PImage;
 import processing.core.PMatrix3D;
@@ -47,11 +48,10 @@ public class OpenVRLibrary {
 
     public OpenVRLibrary(PApplet parent) {
         this.parent = parent;
-
+/*// TODO OVR renderer for hmd transformation
         if (!parent.sketchRenderer().equals(parent.P3D)) {
             System.out.println("Renderer must be P3D, call size(1280, 720, P3D); in setup");
-            return;
-        }
+        }*/
 
         parent.registerMethod("pre", this);
         parent.registerMethod("draw", this);
@@ -59,8 +59,9 @@ public class OpenVRLibrary {
         parent.registerMethod("dispose", this);
 
         registerEvents();
-
-        pg = (PGraphicsOpenGL) parent.g;
+        if (debugRenderer.equals(OVR)) {
+            pg = (PGraphicsOpenGL) parent.g;
+        }
     }
 
     private IVRCompositor_FnTable compositor;
@@ -165,7 +166,7 @@ public class OpenVRLibrary {
                 continue;
             }
 
-//            System.out.println(Utils.GetVREventName(event.eventType));
+            System.out.println(Utils.GetVREventName(event.eventType));
 
             switch (event.eventType) {
                 //Handle quiting the app from Steam
@@ -245,7 +246,7 @@ public class OpenVRLibrary {
     private long[] lastButtonTouched = {0, 0};
 
     private void processControllerEvents() {
-
+        int nextHandId = 0;
         // Process SteamVR controller state
         for (int deviceId = 0; deviceId < k_unMaxTrackedDeviceCount; deviceId++) {
             // if not controller, skip
@@ -263,7 +264,7 @@ public class OpenVRLibrary {
             } else {
                 // neither, index manually
                 // TODO assign hand in connection order for vive
-                hand = 0;
+                hand = nextHandId++;
             }
 
             // getting controller state for every button on deviceId
@@ -549,13 +550,13 @@ public class OpenVRLibrary {
      * Event called after OpenVR is initialized
      */
     private void callPostInit() {
-        if (vrEventMethod != null) {
+        if (postInitMethod != null) {
             try {
                 postInitMethod.invoke(parent);
             } catch (Exception e) {
                 System.err.println("Disabling postInit() for " + name + " because of an error.");
                 e.printStackTrace();
-                vrEventMethod = null;
+                postInitMethod = null;
             }
         }
     }
