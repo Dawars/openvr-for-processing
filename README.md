@@ -22,6 +22,14 @@ Use the utility function MathUtils.GetPosition to get the position from the matr
 PVector GetPosition(PMatrix3D mat);
 ```
 
+### HelloVR
+
+<img src="img/hellovr_perspective.png?raw=true"/>
+
+The library automatically sets up the camera with the headset position and rotation.
+
+(For now OpenVRLibrary.debugRenderer must be OVR and renderer P3D)
+
 ### Controller button events
 
 <img src="img/controller_example.png?raw=true"/>

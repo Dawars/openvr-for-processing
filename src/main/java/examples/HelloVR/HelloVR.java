@@ -93,6 +93,7 @@ public class HelloVR extends PApplet {
     @Override
     public void draw() {
         background(0);
+        scale(1, -1, 1); // convert Processing's left-handed coord system
 
 //        camera(0, 0, 60, 0, 0, 0, 0, 1, 0);
         /*

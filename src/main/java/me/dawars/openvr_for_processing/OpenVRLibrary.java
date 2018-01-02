@@ -141,13 +141,15 @@ public class OpenVRLibrary {
         }
 
         // TODO remove
-        IntBuffer width = GLBuffers.newDirectIntBuffer(1), height = GLBuffers.newDirectIntBuffer(1);
-        hmd.GetRecommendedRenderTargetSize.apply(width, height);
 
-        int w = width.get(0);
-        int h = height.get(0);
-//        parent.getSurface().setSize(w, h);
+        if (debugRenderer.equals(OVR)) {
+            IntBuffer width = GLBuffers.newDirectIntBuffer(1), height = GLBuffers.newDirectIntBuffer(1);
+            hmd.GetRecommendedRenderTargetSize.apply(width, height);
 
+            int w = width.get(0);
+            int h = height.get(0);
+//            parent.getSurface().setSize(w, h); // black for vive
+        }
 
         callPostInit();
     }
@@ -401,7 +403,7 @@ public class OpenVRLibrary {
     public PMatrix3D GetDeviceToAbsoluteTrackingPose(int deviceId) {
         TrackedDevicePose_t[] trackedDevicePose = new TrackedDevicePose_t[deviceId+1];
         // TODO: store a local copy per draw() call
-        hmd.GetDeviceToAbsoluteTrackingPose.apply(TrackingUniverseStanding, 0, trackedDevicePose, deviceId);
+        hmd.GetDeviceToAbsoluteTrackingPose.apply(TrackingUniverseStanding, 0, trackedDevicePose, deviceId+1);
 
         return MathUtils.GetPMatrix(trackedDevicePose[deviceId].mDeviceToAbsoluteTracking);
     }
