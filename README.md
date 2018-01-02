@@ -2,6 +2,16 @@
 OpenVR Library for Processing, heavily under development, things ***will*** break
 
 ## Examples
+### Initializing library
+
+```
+OpenVRLibrary openVR;
+public void setup() {
+    frameRate(90);
+    OpenVRLibrary.debugRenderer = OpenVRLibrary.OVR; // for camera setup
+    openVR = new OpenVRLibrary(this);
+}
+```
 
 ### Tracking
 
