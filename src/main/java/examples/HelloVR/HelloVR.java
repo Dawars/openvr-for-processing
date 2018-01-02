@@ -30,8 +30,8 @@ public class HelloVR extends PApplet {
     @Override
     public void setup() {
         frameRate(90);
+        OpenVRLibrary.debugRenderer = OpenVRLibrary.OVR;
         openVR = new OpenVRLibrary(this);
-
         // shaders, textures
 
         texture = loadImage("cube_texture.png");
@@ -113,6 +113,7 @@ public class HelloVR extends PApplet {
             for (int y = 0; y < m_iSceneVolumeHeight; y++) {
                 for (int x = 0; x < m_iSceneVolumeWidth; x++) {
                     pushMatrix();
+                    // todo check processing and openvr coord system
                     translate(startX + x * m_fScaleSpacing, startY + y * m_fScaleSpacing, startZ + z * m_fScaleSpacing);
                     cube.draw(g);
 //                    box(1);

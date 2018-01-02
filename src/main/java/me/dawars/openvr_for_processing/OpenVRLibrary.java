@@ -123,7 +123,7 @@ public class OpenVRLibrary {
         }
     }
 
-    String debugRenderer = PApplet.P3D;
+    public static String debugRenderer = PApplet.P3D;
 
     private void postInit() {
         updateChaperoneData();
@@ -166,7 +166,7 @@ public class OpenVRLibrary {
                 continue;
             }
 
-            System.out.println(Utils.GetVREventName(event.eventType));
+//            System.out.println(Utils.GetVREventName(event.eventType));
 
             switch (event.eventType) {
                 //Handle quiting the app from Steam
@@ -187,9 +187,9 @@ public class OpenVRLibrary {
                 case VREvent_TrackedDeviceDeactivated:
                 case VREvent_TrackedDeviceRoleChanged:
                 case VREvent_TrackedDeviceUpdated:
-                case VREvent_TrackedDeviceUserInteractionEnded:
-                case VREvent_TrackedDeviceUserInteractionStarted:
-
+//                case VREvent_TrackedDeviceUserInteractionEnded:
+//                case VREvent_TrackedDeviceUserInteractionStarted:
+                    System.out.println(Utils.GetVREventName(event.eventType));
                     updateControllerRole();
                     break;
 
@@ -241,7 +241,7 @@ public class OpenVRLibrary {
         }
     }
 
-    private int[] lastControllerPacketNum = {Hand.INVALID, Hand.INVALID};
+    private int[] lastControllerPacketNum = {-1, -1};
     private long[] lastButtonPressed = {0, 0};
     private long[] lastButtonTouched = {0, 0};
 
@@ -254,7 +254,7 @@ public class OpenVRLibrary {
                 continue;
 
             // get hand
-            int hand = Hand.INVALID; // todo: make lookup function
+            int hand; // todo: make lookup function
             int controllerRole = hmd.GetInt32TrackedDeviceProperty.apply(deviceId, Prop_ControllerRoleHint_Int32, errorBuffer);
 
             if (controllerRole == TrackedControllerRole_RightHand) {
