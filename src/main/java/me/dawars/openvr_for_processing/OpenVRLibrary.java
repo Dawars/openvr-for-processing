@@ -292,7 +292,7 @@ public class OpenVRLibrary {
     private int[] controllerIds = new int[Hand.MAX];
 
     private void updateControllerRole() {
-        int nextHandId = 0;
+       /* int nextHandId = 0;
 
         // Process SteamVR controller state
         for (int deviceId = 0; deviceId < k_unMaxTrackedDeviceCount; deviceId++) {
@@ -309,7 +309,7 @@ public class OpenVRLibrary {
             } else {
                 controllerIds[nextHandId++] = deviceId;
             }
-        }
+        }*/
     }
 
     private int[] lastControllerPacketNum = {-1, -1};
@@ -322,6 +322,9 @@ public class OpenVRLibrary {
         for (int deviceId = 0; deviceId < k_unMaxTrackedDeviceCount; deviceId++) {
             // if not controller, skip
             if (hmd.GetTrackedDeviceClass.apply(deviceId) != TrackedDeviceClass_Controller)
+                continue;
+
+            if(!hmd.IsTrackedDeviceConnected.apply(deviceId))
                 continue;
 
             // get hand
@@ -510,6 +513,19 @@ public class OpenVRLibrary {
         }
 
         return icons[deviceId];
+    }
+
+
+    public String getDeviceName(int deviceId) {
+        return hmd.GetTrackedDevicePropertyString(deviceId, Prop_ModelNumber_String, errorBuffer);
+    }
+
+    public IVRSystem getHMD() {
+        return hmd;
+    }
+
+    public IVRCompositor_FnTable getCompositor() {
+        return compositor;
     }
 
     /*

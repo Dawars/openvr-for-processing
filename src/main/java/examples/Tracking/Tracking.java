@@ -8,6 +8,7 @@ import processing.core.PMatrix3D;
 import processing.core.PVector;
 import vr.VR;
 
+import static vr.VR.ETrackedDeviceProperty.Prop_ModelNumber_String;
 import static vr.VR.k_unMaxTrackedDeviceCount;
 import static vr.VR.k_unTrackedDeviceIndex_Hmd;
 
@@ -39,6 +40,23 @@ public class Tracking extends PApplet {
     }
 
 
+    public void drawMatrix(PMatrix3D mat, float x, float y) {
+        float[] m = new float[16];
+        mat.get(m);
+
+        for (int i = 0; i < m.length; i++) {
+            m[i] = Math.round(m[i] * 100f) / 100f;
+        }
+
+        float w = textWidth("-2.001 ");
+
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                text(m[4 * j + i], x + i * w, y + j * 20);
+            }
+        }
+    }
+
     @Override
     public void draw() {
         background(0xffffff);
@@ -63,7 +81,15 @@ public class Tracking extends PApplet {
 
             PMatrix3D pose = openVR.GetDeviceToAbsoluteTrackingPose(deviceId);
             if (pose == null) continue;
+
+            text(openVR.getDeviceName(deviceId), 10, 40 + 120 * deviceId);
+            drawMatrix(pose, 10, 60 + 120 * deviceId);
+
             PVector pos = MathUtils.GetPosition(pose);
+            if (deviceId == 3) pos = new PVector(pose.m00, pose.m10, pose.m20);
+            if (deviceId == 4) pos = new PVector(0, pose.m03, pose.m13);
+
+
             float angle = MathUtils.GetRotationY(pose);
 
             PImage icon = openVR.getDeviceIcon(deviceId);
@@ -71,6 +97,7 @@ public class Tracking extends PApplet {
             pushMatrix();
 
             translate(width / 2 + pos.x * worldScale, height / 2 + pos.z * worldScale);
+
             rotateZ(-angle);
 
             imageMode(CENTER);
