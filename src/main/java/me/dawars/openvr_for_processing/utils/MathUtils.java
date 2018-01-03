@@ -51,6 +51,7 @@ public class MathUtils {
      * Get the vector representing the position
      */
     public static PVector GetPosition(PMatrix3D mat) {
+        if (mat == null) return null;
         return new PVector(mat.m03, mat.m13, mat.m23);
     }
 
@@ -71,6 +72,7 @@ public class MathUtils {
      * @return angle in radians
      */
     public static float GetRotationY(PMatrix3D mat) {
+        if (mat == null) return 0;
         return (float) Math.atan2(-mat.m20, Math.sqrt(mat.m21 * mat.m21 + mat.m22 * mat.m22));
     }
 

@@ -10,6 +10,8 @@ import processing.core.PImage;
 import processing.core.PMatrix3D;
 import processing.core.PVector;
 import processing.opengl.PGraphicsOpenGL;
+import processing.opengl.PSurfaceJOGL;
+import processing.opengl.Texture;
 import vr.*;
 
 import java.lang.reflect.*;
@@ -20,7 +22,7 @@ import static me.dawars.openvr_for_processing.utils.ControllerUtils.*;
 import static me.dawars.openvr_for_processing.utils.ControllerUtils.IsButtonPressedOrTouched;
 import static vr.VR.ETrackedControllerRole.TrackedControllerRole_LeftHand;
 import static vr.VR.ETrackedControllerRole.TrackedControllerRole_RightHand;
-import static vr.VR.ETrackedDeviceClass.TrackedDeviceClass_Controller;
+import static vr.VR.ETrackedDeviceClass.*;
 import static vr.VR.ETrackedDeviceProperty.*;
 import static vr.VR.ETrackingUniverseOrigin.TrackingUniverseStanding;
 import static vr.VR.EVRButtonId.k_EButton_Max;
@@ -45,6 +47,13 @@ public class OpenVRLibrary {
     private Method postInitMethod;
 
     private boolean isReady = false; // if initializing openvr is finished
+
+    private TrackedDevicePose_t[] m_rTrackedDevicePose = new TrackedDevicePose_t[k_unMaxTrackedDeviceCount];
+    private int m_iValidPoseCount;
+    private String m_strPoseClasses;
+    private PMatrix3D[] m_rmat4DevicePose = new PMatrix3D[k_unMaxTrackedDeviceCount];
+    private char[] m_rDevClassChar = new char[k_unMaxTrackedDeviceCount];
+    private PMatrix3D m_mat4HMDPose;
 
     public OpenVRLibrary(PApplet parent) {
         this.parent = parent;
@@ -96,34 +105,46 @@ public class OpenVRLibrary {
         }
 
 
+        // Process SteamVR events
+        VREvent_t event = new VREvent_t();
+        while (hmd.PollNextEvent.apply(event, event.size())) {
+            ProcessVREvent(event);
+        }
+
+        // Process SteamVR controller state
+        processControllerEvents();
+
         /* vr camera */
-        if (debugRenderer.equals(OVR)) {
+        if (debugRenderer.equals(OVR)) {//  eye to head
 
-            // TODO try regular projection or ortho camera matrix
-
-
-            // eye to head
-            PMatrix3D eyePos = MathUtils.GetPMatrix(hmd.GetEyeToHeadTransform.apply(0));
-            eyePos.invert();
-
-            PMatrix3D pose = GetDeviceToAbsoluteTrackingPose(k_unTrackedDeviceIndex_Hmd);
 
             // matMVP = m_mat4ProjectionLeft * m_mat4eyePosLeft * m_mat4HMDPose;
             PMatrix3D matMVP = new PMatrix3D();
 
-            matMVP.set(eyePos);
-            matMVP.apply(pose);
+            PMatrix3D pose = GetDeviceToAbsoluteTrackingPose(k_unTrackedDeviceIndex_Hmd);
 
-            //set projection
 
-            pg.modelview.set(matMVP);
-            pg.modelviewInv.set(matMVP);
-            pg.modelviewInv.invert();
-            pg.updateProjmodelview();
+            for (int eye = 0; eye < EVREye.Max; eye++) {
+                // camera eye pos
+                PMatrix3D eyePos = MathUtils.GetPMatrix(hmd.GetEyeToHeadTransform.apply(0));
+                eyePos.invert();
+                matMVP.set(eyePos);
+                matMVP.apply(pose);
+
+                //set projection
+
+                pg.modelview.set(matMVP);
+                pg.modelviewInv.set(matMVP);
+                pg.modelviewInv.invert();
+                pg.updateProjmodelview();
+            }
         }
     }
 
     public static String debugRenderer = PApplet.P3D;
+
+    private final Texture eyeTextures[] = new Texture[2];
+    private final PGraphicsOpenGL[] views = new PGraphicsOpenGL[2];
 
     private void postInit() {
         updateChaperoneData();
@@ -140,7 +161,7 @@ public class OpenVRLibrary {
             pg.setProjection(proj);
         }
 
-        // TODO remove
+        // init render targets
 
         if (debugRenderer.equals(OVR)) {
             IntBuffer width = GLBuffers.newDirectIntBuffer(1), height = GLBuffers.newDirectIntBuffer(1);
@@ -148,7 +169,11 @@ public class OpenVRLibrary {
 
             int w = width.get(0);
             int h = height.get(0);
-//            parent.getSurface().setSize(w, h); // black for vive
+
+            for (int eye = 0; eye < EVREye.Max; eye++) {
+                views[eye] = (PGraphicsOpenGL) parent.createGraphics(w, h, parent.P3D);
+                eyeTextures[eye] = views[eye].getTexture();
+            }
         }
 
         callPostInit();
@@ -159,43 +184,46 @@ public class OpenVRLibrary {
 
     }
 
-    public void post() {
-        // process events
-        VREvent_t event = new VREvent_t();
-        while (hmd.PollNextEvent.apply(event, event.size())) {
 
-            if (callVREvent(event)) {
-                continue;
-            }
+    public void post() {
+
+        UpdateHMDMatrixPose();
+    }
+
+    private void ProcessVREvent(VREvent_t event) {
+
+        if (callVREvent(event)) {
+            return;
+        }
 
 //            System.out.println(Utils.GetVREventName(event.eventType));
 
-            switch (event.eventType) {
-                //Handle quiting the app from Steam
-                case VREvent_DriverRequestedQuit:
-                case VREvent_Quit:
-                    parent.exit();
-                    break;
+        switch (event.eventType) {
+            //Handle quiting the app from Steam
+            case VREvent_DriverRequestedQuit:
+            case VREvent_Quit:
+                parent.exit();
+                break;
 
-                case VREvent_ChaperoneDataHasChanged:
-                case VREvent_ChaperoneUniverseHasChanged:
-                case VREvent_ChaperoneTempDataHasChanged:
-                case VREvent_ChaperoneSettingsHaveChanged:
-                    updateChaperoneData();
-                    break;
+            case VREvent_ChaperoneDataHasChanged:
+            case VREvent_ChaperoneUniverseHasChanged:
+            case VREvent_ChaperoneTempDataHasChanged:
+            case VREvent_ChaperoneSettingsHaveChanged:
+                updateChaperoneData();
+                break;
 
-                // Device connected
-                case VREvent_TrackedDeviceActivated:
-                case VREvent_TrackedDeviceDeactivated:
-                case VREvent_TrackedDeviceRoleChanged:
-                case VREvent_TrackedDeviceUpdated:
+            // Device connected
+            case VREvent_TrackedDeviceActivated:
+            case VREvent_TrackedDeviceDeactivated:
+            case VREvent_TrackedDeviceRoleChanged:
+            case VREvent_TrackedDeviceUpdated:
 //                case VREvent_TrackedDeviceUserInteractionEnded:
 //                case VREvent_TrackedDeviceUserInteractionStarted:
-                    System.out.println(Utils.GetVREventName(event.eventType));
-                    updateControllerRole();
-                    break;
+                System.out.println(Utils.GetVREventName(event.eventType));
+                updateControllerRole();
+                break;
 
-                // Controller
+            // Controller
                 /*
                 // Can't use because buttonId is always 0
                 case VREvent_ButtonPress:
@@ -210,10 +238,51 @@ public class OpenVRLibrary {
                 case VREvent_ButtonUntouch:
                     callButtonUntouchedEvent(event.trackedDeviceIndex, event.data.controller.button);
                     break;*/
+        }
+    }
+
+    private void UpdateHMDMatrixPose() {
+        if (hmd == null)
+            return;
+
+        compositor.WaitGetPoses.apply(m_rTrackedDevicePose, k_unMaxTrackedDeviceCount, null, 0);
+
+        m_iValidPoseCount = 0;
+        m_strPoseClasses = "";
+        for (int nDevice = 0; nDevice < k_unMaxTrackedDeviceCount; ++nDevice) {
+            if (m_rTrackedDevicePose[nDevice].bPoseIsValid) {
+                m_iValidPoseCount++;
+                m_rmat4DevicePose[nDevice] = MathUtils.GetPMatrix(m_rTrackedDevicePose[nDevice].mDeviceToAbsoluteTracking);
+                if (m_rDevClassChar[nDevice] == 0) {
+                    switch (hmd.GetTrackedDeviceClass.apply(nDevice)) {
+                        case TrackedDeviceClass_Controller:
+                            m_rDevClassChar[nDevice] = 'C';
+                            break;
+                        case TrackedDeviceClass_HMD:
+                            m_rDevClassChar[nDevice] = 'H';
+                            break;
+                        case TrackedDeviceClass_Invalid:
+                            m_rDevClassChar[nDevice] = 'I';
+                            break;
+                        case TrackedDeviceClass_GenericTracker:
+                            m_rDevClassChar[nDevice] = 'G';
+                            break;
+                        case TrackedDeviceClass_TrackingReference:
+                            m_rDevClassChar[nDevice] = 'T';
+                            break;
+                        default:
+                            m_rDevClassChar[nDevice] = '?';
+                            break;
+                    }
+                }
+                m_strPoseClasses += m_rDevClassChar[nDevice];
             }
         }
 
-        processControllerEvents();
+        if (m_rTrackedDevicePose[k_unTrackedDeviceIndex_Hmd].bPoseIsValid) {
+            m_mat4HMDPose = m_rmat4DevicePose[k_unTrackedDeviceIndex_Hmd];
+            m_mat4HMDPose.invert();
+        }
     }
 
     /*
@@ -401,11 +470,11 @@ public class OpenVRLibrary {
      * @return absolute pose
      */
     public PMatrix3D GetDeviceToAbsoluteTrackingPose(int deviceId) {
-        TrackedDevicePose_t[] trackedDevicePose = new TrackedDevicePose_t[deviceId+1];
-        // TODO: store a local copy per draw() call
-        hmd.GetDeviceToAbsoluteTrackingPose.apply(TrackingUniverseStanding, 0, trackedDevicePose, deviceId+1);
-
-        return MathUtils.GetPMatrix(trackedDevicePose[deviceId].mDeviceToAbsoluteTracking);
+        TrackedDevicePose_t trackedDevicePose_t = m_rTrackedDevicePose[deviceId];
+        if (trackedDevicePose_t != null)
+            return MathUtils.GetPMatrix(trackedDevicePose_t.mDeviceToAbsoluteTracking);
+        else
+            return null;
     }
 
     /*

@@ -62,6 +62,7 @@ public class Tracking extends PApplet {
 
 
             PMatrix3D pose = openVR.GetDeviceToAbsoluteTrackingPose(deviceId);
+            if (pose == null) continue;
             PVector pos = MathUtils.GetPosition(pose);
             float angle = MathUtils.GetRotationY(pose);
 
