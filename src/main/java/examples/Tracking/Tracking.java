@@ -59,8 +59,6 @@ public class Tracking extends PApplet {
 
     @Override
     public void draw() {
-        background(0xffffff);
-
         background(0);
 
         PVector playArea = openVR.getPlayArea();
@@ -77,23 +75,22 @@ public class Tracking extends PApplet {
         }
 
         for (int deviceId = 0; deviceId < 6; deviceId++) {
-
-
             PMatrix3D pose = openVR.GetDeviceToAbsoluteTrackingPose(deviceId);
-            if (pose == null) continue;
+            if (pose == null)
+                continue;
 
             text(openVR.getDeviceName(deviceId), 10, 40 + 120 * deviceId);
             drawMatrix(pose, 10, 60 + 120 * deviceId);
 
             PVector pos = MathUtils.GetPosition(pose);
-            if (deviceId == 3) pos = new PVector(pose.m00, pose.m10, pose.m20);
-            if (deviceId == 4) pos = new PVector(0, pose.m03, pose.m13);
-
+            point(width / 2 + pos.x * worldScale, height / 2 + pos.z * worldScale); // hmd working
 
             float angle = MathUtils.GetRotationY(pose);
 
             PImage icon = openVR.getDeviceIcon(deviceId);
             if (icon == null) continue;
+
+
             pushMatrix();
 
             translate(width / 2 + pos.x * worldScale, height / 2 + pos.z * worldScale);
@@ -101,8 +98,7 @@ public class Tracking extends PApplet {
             rotateZ(-angle);
 
             imageMode(CENTER);
-            image(icon, 0, 0);
-
+//            image(icon, 0, 0); // FIXME api future
             popMatrix();
         }
     }

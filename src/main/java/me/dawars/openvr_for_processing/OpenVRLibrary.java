@@ -156,9 +156,9 @@ public class OpenVRLibrary {
 
         if (debugRenderer.equals(OVR)) {
             // projection matrix
-            PMatrix3D proj = MathUtils.GetPMatrix(hmd.GetProjectionMatrix.apply(0, m_fNearClip, m_fFarClip));
+//            PMatrix3D proj = MathUtils.GetPMatrix(hmd.GetProjectionMatrix.apply(0, m_fNearClip, m_fFarClip));
 
-            pg.setProjection(proj);
+//            pg.setProjection(proj);
         }
 
         // init render targets
@@ -250,7 +250,7 @@ public class OpenVRLibrary {
         m_iValidPoseCount = 0;
         m_strPoseClasses = "";
         for (int nDevice = 0; nDevice < k_unMaxTrackedDeviceCount; ++nDevice) {
-            if (m_rTrackedDevicePose[nDevice].bPoseIsValid) {
+            if (m_rTrackedDevicePose[nDevice].bPoseIsValid != 0) {
                 m_iValidPoseCount++;
                 m_rmat4DevicePose[nDevice] = MathUtils.GetPMatrix(m_rTrackedDevicePose[nDevice].mDeviceToAbsoluteTracking);
                 if (m_rDevClassChar[nDevice] == 0) {
@@ -264,9 +264,9 @@ public class OpenVRLibrary {
                         case TrackedDeviceClass_Invalid:
                             m_rDevClassChar[nDevice] = 'I';
                             break;
-                        case TrackedDeviceClass_GenericTracker:
-                            m_rDevClassChar[nDevice] = 'G';
-                            break;
+//                        case TrackedDeviceClass_GenericTracker:
+//                            m_rDevClassChar[nDevice] = 'G';
+//                            break;
                         case TrackedDeviceClass_TrackingReference:
                             m_rDevClassChar[nDevice] = 'T';
                             break;
@@ -279,7 +279,7 @@ public class OpenVRLibrary {
             }
         }
 
-        if (m_rTrackedDevicePose[k_unTrackedDeviceIndex_Hmd].bPoseIsValid) {
+        if (m_rTrackedDevicePose[k_unTrackedDeviceIndex_Hmd].bPoseIsValid != 0) {
             m_mat4HMDPose = m_rmat4DevicePose[k_unTrackedDeviceIndex_Hmd];
             m_mat4HMDPose.invert();
         }
@@ -324,7 +324,7 @@ public class OpenVRLibrary {
             if (hmd.GetTrackedDeviceClass.apply(deviceId) != TrackedDeviceClass_Controller)
                 continue;
 
-            if(!hmd.IsTrackedDeviceConnected.apply(deviceId))
+            if (!hmd.IsTrackedDeviceConnected.apply(deviceId))
                 continue;
 
             // get hand
@@ -343,7 +343,7 @@ public class OpenVRLibrary {
 
             // getting controller state for every button on deviceId
             VRControllerState_t state = new VRControllerState_t();
-            if (hmd.GetControllerState.apply(deviceId, state, state.size()) && state.unPacketNum != lastControllerPacketNum[hand]) {
+            if (hmd.GetControllerState.apply(deviceId, state) && state.unPacketNum != lastControllerPacketNum[hand]) {
                 // checking every analog button
                 /*for (int buttonId = 0; buttonId < k_unControllerStateAxisCount; buttonId++) {
                     int type = hmd.GetInt32TrackedDeviceProperty.apply(deviceId, Prop_Axis0Type_Int32 + buttonId, errorBuffer);
@@ -503,10 +503,10 @@ public class OpenVRLibrary {
                 //If the device is not connected, pass.
                 if (!hmd.IsTrackedDeviceConnected.apply(trackedDevice))
                     continue;
-                String ready = hmd.GetTrackedDevicePropertyString(trackedDevice, Prop_NamedIconPathDeviceReady_String, errorBuffer);
-
-                String driverPath = VR.VR_RuntimePath() + "drivers/" + hmd.GetTrackedDevicePropertyString(trackedDevice, Prop_ResourceRoot_String, errorBuffer);
-                icons[trackedDevice] = parent.loadImage(driverPath + "/resources" + ready.replaceAll("\\{\\w*}", ""));
+//                String ready = hmd.GetTrackedDevicePropertyString(trackedDevice, Prop_NamedIconPathDeviceReady_String, errorBuffer);
+//FIXME icon loading
+//                String driverPath = VR.VR_RuntimePath() + "drivers/" + hmd.GetTrackedDevicePropertyString(trackedDevice, Prop_ResourceRoot_String, errorBuffer);
+//                icons[trackedDevice] = parent.loadImage(driverPath + "/resources" + ready.replaceAll("\\{\\w*}", ""));
 
             }
             iconsLoaded = true;
@@ -528,6 +528,71 @@ public class OpenVRLibrary {
         return compositor;
     }
 
+    /*
+     * Render Models
+     */
+    public void FindOrLoadRenderModel(String pchRenderModelName) {
+      /*  CGLRenderModel * pRenderModel = NULL;
+        for (std::vector < CGLRenderModel * >::iterator i = m_vecRenderModels.begin();
+        i != m_vecRenderModels.end();
+        i++ )
+        {
+            if (!stricmp(( * i)->GetName().c_str(), pchRenderModelName ) )
+            {
+                pRenderModel = *i;
+                break;
+            }
+        }
+
+        // load the model if we didn't find one
+        if (!pRenderModel) {
+            vr::RenderModel_t * pModel;
+            vr::EVRRenderModelError error;
+            while (1) {
+                error = vr::VRRenderModels () -> LoadRenderModel_Async(pchRenderModelName, & pModel );
+                if (error != vr::VRRenderModelError_Loading)
+                    break;
+
+                ThreadSleep(1);
+            }
+
+            if (error != vr::VRRenderModelError_None) {
+                dprintf("Unable to load render model %s - %s\n", pchRenderModelName, vr::VRRenderModels
+                () -> GetRenderModelErrorNameFromEnum(error) );
+                return NULL; // move on to the next tracked device
+            }
+
+            vr::RenderModel_TextureMap_t * pTexture;
+            while (1) {
+                error = vr::VRRenderModels () -> LoadTexture_Async(pModel -> diffuseTextureId, & pTexture );
+                if (error != vr::VRRenderModelError_Loading)
+                    break;
+
+                ThreadSleep(1);
+            }
+
+            if (error != vr::VRRenderModelError_None) {
+                dprintf("Unable to load render texture id:%d for render model %s\n", pModel -> diffuseTextureId, pchRenderModelName);
+                vr::VRRenderModels () -> FreeRenderModel(pModel);
+                return NULL; // move on to the next tracked device
+            }
+
+            pRenderModel = new CGLRenderModel(pchRenderModelName);
+            if (!pRenderModel -> BInit( * pModel, *pTexture ) )
+            {
+                dprintf("Unable to create GL model from render model %s\n", pchRenderModelName);
+                delete pRenderModel;
+                pRenderModel = NULL;
+            }
+		else
+            {
+                m_vecRenderModels.push_back(pRenderModel);
+            }
+            vr::VRRenderModels () -> FreeRenderModel(pModel);
+            vr::VRRenderModels () -> FreeTexture(pTexture);
+        }
+        return pRenderModel;*/
+    }
     /*
      * Events
      */

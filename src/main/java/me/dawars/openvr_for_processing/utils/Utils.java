@@ -37,6 +37,7 @@ public class Utils {
 
             case VREvent_WatchdogWakeUpRequested:
                 return "VREvent_WatchdogWakeUpRequested";
+/*
 
             case VREvent_LensDistortionChanged:
                 return "VREvent_LensDistortionChanged";
@@ -49,6 +50,7 @@ public class Utils {
 
             case VREvent_WirelessReconnect:
                 return "VREvent_WirelessReconnect";
+*/
 
 
             case VREvent_ButtonPress:
@@ -63,7 +65,7 @@ public class Utils {
             case VREvent_ButtonUntouch:
                 return "VREvent_ButtonUntouch";
             // data is controller
-
+/*
             case VREvent_DualAnalog_Press:
                 return "VREvent_DualAnalog_Press";
             // data is dualAnalog
@@ -87,7 +89,7 @@ public class Utils {
             // data is dualAnalog
             case VREvent_DualAnalog_Cancel:
                 return "VREvent_DualAnalog_Cancel";
-            // data is dualAnalog
+            // data is dualAnalog*/
 
             case VREvent_MouseMove:
                 return "VREvent_MouseMove";
@@ -149,12 +151,12 @@ public class Utils {
             case VREvent_ShowRenderModels:
                 return "VREvent_ShowRenderModels";
 
-
+/*
             case VREvent_ConsoleOpened:
                 return "VREvent_ConsoleOpened";
 
             case VREvent_ConsoleClosed:
-                return "VREvent_ConsoleClosed";
+                return "VREvent_ConsoleClosed";*/
 
 
             case VREvent_OverlayShown:
@@ -216,9 +218,9 @@ public class Utils {
 
             case VREvent_ImageFailed:
                 return "VREvent_ImageFailed";
-
+/*
             case VREvent_DashboardOverlayCreated:
-                return "VREvent_DashboardOverlayCreated";
+                return "VREvent_DashboardOverlayCreated";*/
 
             case VREvent_RequestScreenshot:
                 return "VREvent_RequestScreenshot";
@@ -234,9 +236,11 @@ public class Utils {
 
             case VREvent_ScreenshotProgressToDashboard:
                 return "VREvent_ScreenshotProgressToDashboard";
+/*
 
             case VREvent_PrimaryDashboardDeviceChanged:
                 return "VREvent_PrimaryDashboardDeviceChanged";
+*/
 
 
             case VREvent_Notification_Shown:
@@ -302,7 +306,7 @@ public class Utils {
 
             case VREvent_EnvironmentSettingsHaveChanged:
                 return "VREvent_EnvironmentSettingsHaveChanged	";
-
+/*
             case VREvent_PowerSettingsHaveChanged:
                 return "VREvent_PowerSettingsHaveChanged		";
 
@@ -332,7 +336,7 @@ public class Utils {
                 return "VREvent_PerfSectionSettingChanged";
 
             case VREvent_DashboardSectionSettingChanged:
-                return "VREvent_DashboardSectionSettingChanged";
+                return "VREvent_DashboardSectionSettingChanged";*/
 
 
             case VREvent_StatusUpdate:
@@ -374,7 +378,7 @@ public class Utils {
 
             case VREvent_ApplicationMimeTypeLoad:
                 return "VREvent_ApplicationMimeTypeLoad";
-
+/*
             case VREvent_ApplicationTransitionNewAppLaunchComplete:
                 return "VREvent_ApplicationTransitionNewAppLaunchComplete";
 
@@ -382,7 +386,7 @@ public class Utils {
                 return "VREvent_ProcessConnected";
 
             case VREvent_ProcessDisconnected:
-                return "VREvent_ProcessDisconnected";
+                return "VREvent_ProcessDisconnected";*/
 
 
             case VREvent_Compositor_MirrorWindowShown:
@@ -409,10 +413,10 @@ public class Utils {
 
             case VREvent_TrackedCamera_ResumeVideoStream:
                 return "VREvent_TrackedCamera_ResumeVideoStream";
-
-
+/*
             case VREvent_TrackedCamera_EditingSurface:
                 return "VREvent_TrackedCamera_EditingSurface";
+*/
 
 
             case VREvent_PerformanceTest_EnableCapture:
@@ -424,12 +428,12 @@ public class Utils {
             case VREvent_PerformanceTest_FidelityLevel:
                 return "VREvent_PerformanceTest_FidelityLevel";
 
-
+/*
             case VREvent_MessageOverlay_Closed:
                 return "VREvent_MessageOverlay_Closed";
 
             case VREvent_MessageOverlayCloseRequested:
-                return "VREvent_MessageOverlayCloseRequested";
+                return "VREvent_MessageOverlayCloseRequested";*/
             default:
                 return "Unknown Event";
         }

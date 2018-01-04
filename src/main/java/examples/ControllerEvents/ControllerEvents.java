@@ -34,7 +34,7 @@ public class ControllerEvents extends PApplet {
         stroke(0);
 
         int[] buttons = {
-                k_EButton_Oculus_Joystick,
+                k_EButton_SteamVR_Touchpad,
                 k_EButton_SteamVR_Trigger,
                 k_EButton_Grip,
                 k_EButton_ApplicationMenu,
