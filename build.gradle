@@ -11,10 +11,8 @@ repositories {
 
 dependencies {
     compile project(":../jopenvr")
-    compile group: 'org.processing', name: 'core', version: '3.3.6'
+    compile group: 'org.processing', name: 'core', version: '3.3.7'
     compile group: 'net.java.dev.jna', name: 'jna', version: '4.5.1'
-// https://mvnrepository.com/artifact/org.jogamp.jogl/jogl-all
-    compile group: 'org.jogamp.jogl', name: 'jogl-all-main', version: '2.3.2'
 
 //    compile fileTree(dir: 'libs', include: ['*.jar'])
 

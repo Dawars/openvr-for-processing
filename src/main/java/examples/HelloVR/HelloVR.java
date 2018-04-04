@@ -1,7 +1,6 @@
 package examples.HelloVR;
 
 import me.dawars.openvr_for_processing.OpenVRLibrary;
-import me.dawars.openvr_for_processing.utils.GeometryUtils;
 import processing.core.PApplet;
 import processing.core.PConstants;
 import processing.core.PImage;
@@ -21,7 +20,6 @@ public class HelloVR extends PApplet {
     private int m_iSceneVolumeHeight = 20;
     private int m_iSceneVolumeDepth = 20;
     private float m_fScaleSpacing = 4;
-    private PShape cubes;
 
 
     @Override
@@ -42,19 +40,49 @@ public class HelloVR extends PApplet {
         // create cube
 
         textureMode(NORMAL);
-        float startX = -((float) m_iSceneVolumeWidth * m_fScaleSpacing) / 2.f;
-        float startY = -((float) m_iSceneVolumeHeight * m_fScaleSpacing) / 2.f;
-        float startZ = -((float) m_iSceneVolumeDepth * m_fScaleSpacing) / 2.f;
+        cube = createShape();
+        cube.beginShape(QUADS);
+        cube.noStroke();
+        cube.texture(texture);
+// Front Face
+        cube.vertex(-0.5f, -0.5f, 0.5f, 0.0f, 0.0f); // Bottom Left Of The Texture and Quad
+        cube.vertex(0.5f, -0.5f, 0.5f, 1f, 0.0f); // Bottom Right Of The Texture and Quad
+        cube.vertex(0.5f, 0.5f, 0.5f, 1f, 1f); // Top Right Of The Texture and Quad
+        cube.vertex(-0.5f, 0.5f, 0.5f, 0.0f, 1f); // Top Left Of The Texture and Quad
 
-        for (int z = 0; z < m_iSceneVolumeDepth; z++) {
-            for (int y = 0; y < m_iSceneVolumeHeight; y++) {
-                for (int x = 0; x < m_iSceneVolumeWidth; x++) {
+        // Back Face
+        cube.vertex(-0.5f, -0.5f, -0.5f, 1f, 0.0f); // Bottom Right Of The Texture and Quad
+        cube.vertex(-0.5f, 0.5f, -0.5f, 1f, 1f); // Top Right Of The Texture and Quad
+        cube.vertex(0.5f, 0.5f, -0.5f, 0.0f, 1f); // Top Left Of The Texture and Quad
+        cube.vertex(0.5f, -0.5f, -0.5f, 0.0f, 0.0f); // Bottom Left Of The Texture and Quad
+
+        // Top Face
+        cube.vertex(-0.5f, 0.5f, -0.5f, 0.0f, 1f); // Top Left Of The Texture and Quad
+        cube.vertex(-0.5f, 0.5f, 0.5f, 0.0f, 0.0f); // Bottom Left Of The Texture and Quad
+        cube.vertex(0.5f, 0.5f, 0.5f, 1f, 0.0f); // Bottom Right Of The Texture and Quad
+        cube.vertex(0.5f, 0.5f, -0.5f, 1f, 1f); // Top Right Of The Texture and Quad
+
+        // Bottom Face
+        cube.vertex(-0.5f, -0.5f, -0.5f, 1f, 1f);    // Top Right Of The Texture and Quad
+        cube.vertex(0.5f, -0.5f, -0.5f, 0.0f, 1f);    // Top Left Of The Texture and Quad
+        cube.vertex(0.5f, -0.5f, 0.5f, 0.0f, 0.0f);    // Bottom Left Of The Texture and Quad
+        cube.vertex(-0.5f, -0.5f, 0.5f, 1f, 0.0f);    // Bottom Right Of The Texture and Quad
+
+        // Right face
+        cube.vertex(0.5f, -0.5f, -0.5f, 1f, 0.0f);    // Bottom Right Of The Texture and Quad
+        cube.vertex(0.5f, 0.5f, -0.5f, 1f, 1f);    // Top Right Of The Texture and Quad
+        cube.vertex(0.5f, 0.5f, 0.5f, 0.0f, 1f);    // Top Left Of The Texture and Quad
+        cube.vertex(0.5f, -0.5f, 0.5f, 0.0f, 0.0f);    // Bottom Left Of The Texture and Quad
+
+        // Left Face
+        cube.vertex(-0.5f, -0.5f, -0.5f, 0.0f, 0.0f);    // Bottom Left Of The Texture and Quad
+        cube.vertex(-0.5f, -0.5f, 0.5f, 1f, 0.0f);    // Bottom Right Of The Texture and Quad
+        cube.vertex(-0.5f, 0.5f, 0.5f, 1f, 1f);    // Top Right Of The Texture and Quad
+        cube.vertex(-0.5f, 0.5f, -0.5f, 0.0f, 1f);    // Top Left Of The Texture and Quad
 
 
+        cube.endShape();
 
-                }
-            }
-        }
 
         noStroke();
         color(127f);
@@ -78,9 +106,22 @@ public class HelloVR extends PApplet {
 
         scale(m_fScale, m_fScale, m_fScale);
 
-        cubes.draw(g);
-        // todo check processing and openvr coord system
+        float startX = -((float) m_iSceneVolumeWidth * m_fScaleSpacing) / 2.f;
+        float startY = -((float) m_iSceneVolumeHeight * m_fScaleSpacing) / 2.f;
+        float startZ = -((float) m_iSceneVolumeDepth * m_fScaleSpacing) / 2.f;
 
+        for (int z = 0; z < m_iSceneVolumeDepth; z++) {
+            for (int y = 0; y < m_iSceneVolumeHeight; y++) {
+                for (int x = 0; x < m_iSceneVolumeWidth; x++) {
+                    pushMatrix();
+                    // todo check processing and openvr coord system
+                    translate(startX + x * m_fScaleSpacing, startY + y * m_fScaleSpacing, startZ + z * m_fScaleSpacing);
+                    cube.draw(g);
+//                    box(1);
+                    popMatrix();
+                }
+            }
+        }
     }
 
     public static void main(String[] args) {

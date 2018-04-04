@@ -48,7 +48,6 @@ public class OpenVRLibrary {
 
     private boolean isReady = false; // if initializing openvr is finished
 
-    private TrackedDevicePose_t[] m_rTrackedDevicePose = new TrackedDevicePose_t[k_unMaxTrackedDeviceCount];
     private int m_iValidPoseCount;
     private String m_strPoseClasses;
     private PMatrix3D[] m_rmat4DevicePose = new PMatrix3D[k_unMaxTrackedDeviceCount];
@@ -156,9 +155,9 @@ public class OpenVRLibrary {
 
         if (debugRenderer.equals(OVR)) {
             // projection matrix
-//            PMatrix3D proj = MathUtils.GetPMatrix(hmd.GetProjectionMatrix.apply(0, m_fNearClip, m_fFarClip));
+            PMatrix3D proj = MathUtils.GetPMatrix(hmd.GetProjectionMatrix.apply(0, m_fNearClip, m_fFarClip));
 
-//            pg.setProjection(proj);
+            pg.setProjection(proj);
         }
 
         // init render targets
@@ -241,18 +240,23 @@ public class OpenVRLibrary {
         }
     }
 
+    private TrackedDevicePose_t.ByReference trackedDevicePosesReference = new TrackedDevicePose_t.ByReference();
+    public TrackedDevicePose_t[] trackedDevicePose
+            = (TrackedDevicePose_t[]) trackedDevicePosesReference.toArray(VR.k_unMaxTrackedDeviceCount);
+
+
     private void UpdateHMDMatrixPose() {
         if (hmd == null)
             return;
 
-        compositor.WaitGetPoses.apply(m_rTrackedDevicePose, k_unMaxTrackedDeviceCount, null, 0);
+        compositor.WaitGetPoses.apply(trackedDevicePosesReference, k_unMaxTrackedDeviceCount, null, 0);
 
         m_iValidPoseCount = 0;
         m_strPoseClasses = "";
         for (int nDevice = 0; nDevice < k_unMaxTrackedDeviceCount; ++nDevice) {
-            if (m_rTrackedDevicePose[nDevice].bPoseIsValid != 0) {
+            if (trackedDevicePose[nDevice].bPoseIsValid != 0) {
                 m_iValidPoseCount++;
-                m_rmat4DevicePose[nDevice] = MathUtils.GetPMatrix(m_rTrackedDevicePose[nDevice].mDeviceToAbsoluteTracking);
+                m_rmat4DevicePose[nDevice] = MathUtils.GetPMatrix(trackedDevicePose[nDevice].mDeviceToAbsoluteTracking);
                 if (m_rDevClassChar[nDevice] == 0) {
                     switch (hmd.GetTrackedDeviceClass.apply(nDevice)) {
                         case TrackedDeviceClass_Controller:
@@ -264,9 +268,9 @@ public class OpenVRLibrary {
                         case TrackedDeviceClass_Invalid:
                             m_rDevClassChar[nDevice] = 'I';
                             break;
-//                        case TrackedDeviceClass_GenericTracker:
-//                            m_rDevClassChar[nDevice] = 'G';
-//                            break;
+                        case TrackedDeviceClass_GenericTracker:
+                            m_rDevClassChar[nDevice] = 'G';
+                            break;
                         case TrackedDeviceClass_TrackingReference:
                             m_rDevClassChar[nDevice] = 'T';
                             break;
@@ -279,7 +283,7 @@ public class OpenVRLibrary {
             }
         }
 
-        if (m_rTrackedDevicePose[k_unTrackedDeviceIndex_Hmd].bPoseIsValid != 0) {
+        if (trackedDevicePose[k_unTrackedDeviceIndex_Hmd].bPoseIsValid != 0) {
             m_mat4HMDPose = m_rmat4DevicePose[k_unTrackedDeviceIndex_Hmd];
             m_mat4HMDPose.invert();
         }
@@ -343,7 +347,7 @@ public class OpenVRLibrary {
 
             // getting controller state for every button on deviceId
             VRControllerState_t state = new VRControllerState_t();
-            if (hmd.GetControllerState.apply(deviceId, state) && state.unPacketNum != lastControllerPacketNum[hand]) {
+            if (hmd.GetControllerState.apply(deviceId, state, state.size()) && state.unPacketNum != lastControllerPacketNum[hand]) {
                 // checking every analog button
                 /*for (int buttonId = 0; buttonId < k_unControllerStateAxisCount; buttonId++) {
                     int type = hmd.GetInt32TrackedDeviceProperty.apply(deviceId, Prop_Axis0Type_Int32 + buttonId, errorBuffer);
@@ -473,7 +477,7 @@ public class OpenVRLibrary {
      * @return absolute pose
      */
     public PMatrix3D GetDeviceToAbsoluteTrackingPose(int deviceId) {
-        TrackedDevicePose_t trackedDevicePose_t = m_rTrackedDevicePose[deviceId];
+        TrackedDevicePose_t trackedDevicePose_t = trackedDevicePose[deviceId];
         if (trackedDevicePose_t != null)
             return MathUtils.GetPMatrix(trackedDevicePose_t.mDeviceToAbsoluteTracking);
         else
@@ -503,10 +507,10 @@ public class OpenVRLibrary {
                 //If the device is not connected, pass.
                 if (!hmd.IsTrackedDeviceConnected.apply(trackedDevice))
                     continue;
-//                String ready = hmd.GetTrackedDevicePropertyString(trackedDevice, Prop_NamedIconPathDeviceReady_String, errorBuffer);
+                String ready = hmd.GetTrackedDevicePropertyString(trackedDevice, Prop_NamedIconPathDeviceReady_String, errorBuffer);
 //FIXME icon loading
-//                String driverPath = VR.VR_RuntimePath() + "drivers/" + hmd.GetTrackedDevicePropertyString(trackedDevice, Prop_ResourceRoot_String, errorBuffer);
-//                icons[trackedDevice] = parent.loadImage(driverPath + "/resources" + ready.replaceAll("\\{\\w*}", ""));
+                String driverPath = VR.VR_RuntimePath() + "drivers/" + hmd.GetTrackedDevicePropertyString(trackedDevice, Prop_ResourceRoot_String, errorBuffer);
+                icons[trackedDevice] = parent.loadImage(driverPath + "/resources" + ready.replaceAll("\\{\\w*}", ""));
 
             }
             iconsLoaded = true;

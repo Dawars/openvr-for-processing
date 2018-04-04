@@ -98,7 +98,7 @@ public class Tracking extends PApplet {
             rotateZ(-angle);
 
             imageMode(CENTER);
-//            image(icon, 0, 0); // FIXME api future
+            image(icon, 0, 0);
             popMatrix();
         }
     }
